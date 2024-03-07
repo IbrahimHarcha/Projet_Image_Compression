@@ -13,7 +13,7 @@ Le projet est organisé de la manière suivante :
   - **Rapports/** : Rapports générés tout au long du développement.
   - **Autres/** : Autres documents pertinents.
 
-- **resources/** : Ressources nécessaires au projet.
+- **Resources/** : Ressources nécessaires au projet.
   - **Images/** : Images utilisées dans le projet.
   - **Autres/** : Autres ressources (icônes, etc.).
 
