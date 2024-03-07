@@ -27,12 +27,12 @@ Le projet est organisé de la manière suivante :
 
 2. Installez les dépendances suivantes :
 
-  2.1 Windows :
-    ```bash
-    pip install tk
-    ```
+  - Windows :
+  ```bash
+  pip install tk
+  ```
 
-  2.2 Linux :
+  - Linux :
   ```bash
   sudo apt-get install python3-tk
   ```
