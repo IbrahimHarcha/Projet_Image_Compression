@@ -25,6 +25,18 @@ Le projet est organisé de la manière suivante :
     git clone https://github.com/IbrahimHarcha/Projet_Image_Compression.git
     ```
 
+2. Installez les dépendances suivantes :
+
+  2.1 Windows :
+    ```bash
+    pip install tk
+    ```
+
+  2.2 Linux :
+  ```bash
+  sudo apt-get install python3-tk
+  ```
+
 ## Utilisation
 
 À remplir ...
