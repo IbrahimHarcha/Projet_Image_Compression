@@ -1,6 +1,6 @@
 # Projet Detection Falsification Image
 
-Ce projet a pour objectif de développer un logiciel de détection de falsification d'images en utilisant Python. Le logiciel sera doté d'une interface utilisateur intuitive, interactive et esthétiquement agréable.
+Ce projet a pour objectif de développer un logiciel de détection de falsification d'images en utilisant Python.
 
 ## Structure du Projet
 
