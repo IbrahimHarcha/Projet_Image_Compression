@@ -1,7 +1,7 @@
 ## Pour lancer un programme  :
 
 ```bash
-    python3 nom_du_programme.py chemin_de_l'image
+    python3 nom_du_programme.py chemin_de_image
 ```
 
 ### Exemple :
