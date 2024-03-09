@@ -29,12 +29,16 @@ Le projet est organisé de la manière suivante :
 
   - Windows :
   ```bash
+  pip install matplotlib
   pip install tk
+  pip install opencv-python
   ```
 
   - Linux :
   ```bash
+  sudo apt-get install python3-matplotlib
   sudo apt-get install python3-tk
+  sudo apt-get install python3-opencv
   ```
 
 ## Utilisation
