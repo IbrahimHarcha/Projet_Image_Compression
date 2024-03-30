@@ -2,7 +2,7 @@ import cv2
 import sys
 import matplotlib.pyplot as plt
 
-def detecter_regions_falsifiees(image):
+def detecter_regions_falsifiees(image, aire_min):
     # Convertir l'image en nvg
     image_gris = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     
@@ -17,20 +17,21 @@ def detecter_regions_falsifiees(image):
         aire = cv2.contourArea(contour)
         
         # Si l'aire est supérieure à un certain seuil, on considére la région comme falsifiée
-        if aire > 70:
+        if aire > aire_min:
             x, y, w, h = cv2.boundingRect(contour)
             regions_falsifiees.append((x, y, x + w, y + h))
     
     return regions_falsifiees
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Usage: python script.py chemin_image")
+    if len(sys.argv) != 3:
+        print("Usage: python script.py chemin_image aire_min")
         sys.exit(1)
 
     image = cv2.imread(sys.argv[1])
+    aire_min = int(sys.argv[2])
     
-    regions_falsifiees = detecter_regions_falsifiees(image)
+    regions_falsifiees = detecter_regions_falsifiees(image, aire_min)
 
     max_region = None
     max_count = 0

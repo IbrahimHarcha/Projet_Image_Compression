@@ -2,7 +2,7 @@ import cv2
 import sys
 import matplotlib.pyplot as plt
 
-def detecter_regions_falsifiees(image):
+def detecter_regions_falsifiees(image, seuil_aire):
     # Convertir l'image en nvg
     image_gris = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     
@@ -16,26 +16,27 @@ def detecter_regions_falsifiees(image):
         # calcule l'aire du contour
         aire = cv2.contourArea(contour)
         
-        # Si l'aire est supérieure à un certain seuil, on considère la région comme falsifiée
-        if aire > 80:
+        # Si l'aire est supérieure au seuil donné, on considère la région comme falsifiée
+        if aire > seuil_aire:
             x, y, w, h = cv2.boundingRect(contour)
             regions_falsifiees.append((x, y, x + w, y + h))
     
     return regions_falsifiees
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Usage: python script.py chemin_image")
+    if len(sys.argv) != 3:
+        print("Usage: python script.py chemin_image seuil_aire")
         sys.exit(1)
 
     image = cv2.imread(sys.argv[1])
+    seuil_aire = int(sys.argv[2])
     
-    regions_falsifiees = detecter_regions_falsifiees(image)
+    regions_falsifiees = detecter_regions_falsifiees(image, seuil_aire)
 
     # Afficher les régions falsifiées
     for region in regions_falsifiees:
         x1, y1, x2, y2 = region
-        cv2.rectangle(image, (x1, y1), (x2, y2), (0, 0, 255), 2)
+        cv2.rectangle(image, (x1, y1), (x2, y2), (0, 0, 255), 5)
 
     fig, axes = plt.subplots(1, 2)
     axes[0].imshow(cv2.cvtColor(cv2.imread(sys.argv[1]), cv2.COLOR_BGR2RGB))
