@@ -1,8 +1,9 @@
 import sys
 import cv2
+
 import matplotlib.pyplot as plt
 
-def detect_double_quantization(image_path, quality1, quality2, threshold=20):
+def detect_double_quantization(image_path, quality1, quality2, threshold):
     # Charger l'image originale
     original_image = cv2.imread(image_path)
 
@@ -41,12 +42,12 @@ def detect_double_quantization(image_path, quality1, quality2, threshold=20):
 
     plt.show()
 
-assert not (len(sys.argv) != 2), 'Erreur, Usage : double_quantificazion_detect.py imageIn'
+assert len(sys.argv) == 5, 'Erreur, Usage : double_quantificazion_detect.py imageIn quality1 quality2 threshold'
 
 # Exemple d'utilisation
 image_path = sys.argv[1]
-quality1 = 90  # Qualité de compression 1
-quality2 = 50  # Qualité de compression 2
-threshold = 20  # Seuil de binarisation
+quality1 = int(sys.argv[2])  # Qualité de compression 1
+quality2 = int(sys.argv[3])  # Qualité de compression 2
+threshold = int(sys.argv[4])  # Seuil de binarisation
 
 detect_double_quantization(image_path, quality1, quality2, threshold)

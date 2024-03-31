@@ -1,5 +1,6 @@
 import sys
 import cv2
+
 import matplotlib.pyplot as plt
 
 def ela_detection_color(path, quality):
@@ -21,11 +22,11 @@ def ela_detection_color(path, quality):
 
     return ela_img
 
-assert not (len(sys.argv) != 2), 'Erreur, Usage : ela_detection.py imageIn'
+assert not (len(sys.argv) != 3), 'Erreur, Usage : ela_detection.py imageIn quality'
 
 # Example usage
 image_path = str(sys.argv[1])
-quality = 75
+quality = int(sys.argv[2])
 result = ela_detection_color(image_path, quality)
 
 
