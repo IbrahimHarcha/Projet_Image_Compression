@@ -32,6 +32,7 @@ Le projet est organisé de la manière suivante :
   pip install matplotlib
   pip install tk
   pip install opencv-python
+  pip install -U scikit-learn scipy 
   ```
 
   - Linux :
@@ -39,6 +40,7 @@ Le projet est organisé de la manière suivante :
   sudo apt-get install python3-matplotlib
   sudo apt-get install python3-tk
   sudo apt-get install python3-opencv
+  sudo apt-get install python3-sklearn 
   ```
 
 ## Utilisation
