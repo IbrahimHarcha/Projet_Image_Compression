@@ -1,10 +1,45 @@
-import tkinter as tk
-from tkinter import filedialog, ttk, messagebox
+from tkinter import ttk, messagebox
 import subprocess 
 from tkinter import simpledialog
 import os
+from PIL import Image, ImageChops, ImageEnhance
+import tempfile
+import numpy as np
+from keras.models import load_model
 import matplotlib.pyplot as plt
 from sklearn.metrics import roc_curve, auc
+from customtkinter import *
+
+# IA resources
+
+IMG_WIDTH = 128
+IMG_HEIGHT = 128
+IMG_CANAL = 3
+
+def ELA_extraction(path):
+    temp_filename = tempfile.mktemp(suffix='.jpg')
+    
+    image = Image.open(path).convert('RGB')
+    image.save(temp_filename, 'JPEG', quality=90)
+    temp_image = Image.open(temp_filename)
+    
+    ela_image = ImageChops.difference(image, temp_image)
+    
+    extrema = ela_image.getextrema()
+    max_diff = max([ex[1] for ex in extrema])
+    if max_diff == 0:
+        max_diff = 1
+    scale = 255.0 / max_diff
+    
+    ela_image = ImageEnhance.Brightness(ela_image).enhance(scale)
+    
+    return ela_image
+
+def prepare_image(image_path):
+    return np.array(ELA_extraction(image_path).resize((IMG_WIDTH, IMG_HEIGHT))).flatten() / 255.0 # Normalisation
+
+
+# Méthodes de detection
 
 def run_detection(script_name, image_path, root):
     try:
@@ -76,13 +111,12 @@ def run_detection(script_name, image_path, root):
 
     return info
 
-
 def main():
-    root = tk.Tk()
+    root = CTk()
     root.title("Détection de Falsification d'Images")
 
     window_width = 600
-    window_height = 300
+    window_height = 500
 
     position_top = int(root.winfo_screenheight() / 2 - window_height / 2)
     position_right = int(root.winfo_screenwidth() / 2 - window_width / 2)
@@ -97,8 +131,8 @@ def main():
     style.map("TCombobox", fieldbackground=[("readonly", "#e0e0e0")])
 
     # Style pour les boutons
-    btn_style = ttk.Style()
-    btn_style.configure("TButton", font=("Arial", 12, "bold"), background="#a0a0a0")
+    # btn_style = ttk.Style()
+    # btn_style.configure("TButton", font=("Arial", 12, "bold"), background="#a0a0a0")
 
     # Cadre pour les widgets
     frame = ttk.Frame(root, padding="20", relief="ridge", style="TFrame")
@@ -111,33 +145,77 @@ def main():
     frame.rowconfigure(1, weight=1)
 
     # Sélection de script
-    script_name = tk.StringVar()
+    global script_name
+    script_name = ""
+    def on_combobox_change(value):
+        global script_name
+        script_name = value
+
     scripts = ["canny.py", "canny2.py", "dct_filter.py", "double_quantificazion_detect.py",
                "ela_detection.py", "extract_noise.py", "facteurCouleur.py",
                "gradient.py", "jpeg_ghost.py"]
-    script_select_label = ttk.Label(frame, text="Choisissez un script :", background="#f0f0f0", font=("Arial", 12))
+    script_select_label = CTkLabel(frame, text="Choisissez un script :", bg_color="#f0f0f0", font=("Arial", 12), text_color="#000000")
     script_select_label.grid(column=0, row=0, sticky="ew")
-    script_select = ttk.Combobox(frame, textvariable=script_name, values=scripts, state="readonly")
+    script_select = CTkComboBox(frame, command=on_combobox_change, values=scripts, state="readonly")
     script_select.grid(column=1, row=0, pady=5, padx=5, sticky="ew")
-    script_select.current(0)
+    # script_select.current(0)
 
     # Create a label to display the script info
-    script_info_label = ttk.Label(frame, text="", background="#f0f0f0", font=("Arial", 12))
-    script_info_label.grid(column=0, row=2, columnspan=2, sticky="ew")
+    script_info_label = CTkLabel(frame, text="", bg_color="#f0f0f0", font=("Arial", 12), text_color="#000000")
+    script_info_label.grid(column=0, row=4, columnspan=2, sticky="ew")
+
+    # enregistrement du file_path
+    global file_path
+    file_path = ""
 
     # Sélection de l'image
     def choose_image():
+        global file_path
         file_path = filedialog.askopenfilename()
-        if file_path:
-            info = run_detection(script_name.get(), file_path, root)  # Modifié pour inclure root
-            script_info_label['text'] = info  # maj du label avec les infos de la dernière exécution
+        label_file_path.configure(text=file_path)
+        
+    def run():
+        global script_name
+        global file_path
+        if file_path and script_name:
+            info = run_detection(script_name, file_path, root)  # Modifié pour inclure root
+            script_info_label.configure(text=info)  # maj du label avec les infos de la dernière exécution
 
-    image_btn = ttk.Button(frame, text="Choisir une image", command=choose_image, style="TButton")
+    image_btn = CTkButton(frame, text="Choisir une image", command=choose_image)
     image_btn.grid(column=0, row=1, columnspan=2, pady=10, sticky="ew")
 
+    # label file path
+    label_file_path = CTkLabel(frame, text="", bg_color="#f0f0f0", font=("Arial", 12), text_color="#000000")
+    label_file_path.grid(column=0, row=2, columnspan=2, sticky="ew")
+
     # Bouton pour évaluer la méthode de détection
-    evaluate_btn = ttk.Button(frame, text="Évaluer la méthode de détection", command=evaluate_detection, style="TButton")
+    evaluate_btn = CTkButton(frame, text="Run", command=run)
     evaluate_btn.grid(column=0, row=3, columnspan=2, pady=30, sticky="ew")
+
+    # Bouton pour évaluer la méthode de détection
+    evaluate_btn = CTkButton(frame, text="Évaluer la méthode de détection", command=evaluate_detection)
+    evaluate_btn.grid(column=0, row=5, columnspan=2, pady=30, sticky="ew")
+
+    # Label pour le CNN
+    label_cnn = CTkLabel(frame, text="", bg_color="#f0f0f0", font=("Arial", 12), text_color="#000000")
+    label_cnn.grid(column=0, row=7, columnspan=2, sticky="ew")
+
+    def evaluate_cnn():
+        global file_path
+        if file_path:
+            model = load_model('../cnn/fake_image_detector_model4.h5')
+            preprocessed_image = prepare_image(file_path)
+            preprocessed_image = preprocessed_image.reshape(-1, IMG_WIDTH, IMG_HEIGHT, IMG_CANAL)
+            prediction = model.predict(preprocessed_image)
+            class_labels = ['Réel', 'Falsifié']
+            predicted_class_index = np.argmax(prediction)
+            predicted_class_label = class_labels[predicted_class_index]
+            confidence = prediction[0][predicted_class_index]
+            label_cnn.configure(text=f"Image {predicted_class_label} avec une confiance de {confidence * 100.0:.2f} %")
+
+    # Bouton pour le model CNN
+    cnn_btn = CTkButton(frame, text="Avis de l'IA", command=evaluate_cnn)
+    cnn_btn.grid(column=0, row=6, columnspan=2, pady=30, sticky="ew")
 
     root.mainloop()
 
@@ -159,6 +237,9 @@ def evaluate_detection():
     plt.title('Receiver Operating Characteristic')
     plt.legend(loc="lower right")
     plt.show()
+
+
+
 
 
 if __name__ == "__main__":
