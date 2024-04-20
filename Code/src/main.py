@@ -9,6 +9,82 @@ from keras.models import load_model
 import matplotlib.pyplot as plt
 from sklearn.metrics import roc_curve, auc
 from customtkinter import *
+import cv2
+
+
+################## FONCTION POUR EVALUATION ##################
+def gradient(image, seuil):
+    img = cv2.imread(image, cv2.IMREAD_GRAYSCALE)
+
+    # on calcule le gradient horizontal et vertical de l'image
+    gradient_x = cv2.Sobel(img, cv2.CV_64F, 1, 0, ksize=3)
+    gradient_y = cv2.Sobel(img, cv2.CV_64F, 0, 1, ksize=3)
+
+    # magnitude du gradient
+    magnitude = np.sqrt(gradient_x**2 + gradient_y**2)
+
+    # on applique le seuil
+    regions_suspectes = np.where(magnitude > seuil, 1, 0)
+
+    return regions_suspectes # Renvoie une image binaire !
+
+
+def extract_noise_eval(image_path, kernel_size=21):
+    # Charger l'image
+    image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+    # Appliquer le filtre de médiane pour extraire le bruit
+    noise = cv2.medianBlur(image, kernel_size)
+    # Calculer le bruit en soustrayant l'image filtrée de l'image originale
+    extracted_noise = cv2.absdiff(image, noise)
+    # Améliorer la luminosité du bruit
+    extracted_noise = cv2.convertScaleAbs(extracted_noise, alpha=1.5)
+    return extracted_noise
+
+def jpeg_ghost_detection(image_path, ground_truth_path):
+    """JPEG Ghost Detection"""
+
+    # Charger l'image avec OpenCV
+    original_image = cv2.imread(image_path)
+
+    # Charger l'image de vérité terrain
+    ground_truth = cv2.imread(ground_truth_path, cv2.IMREAD_GRAYSCALE)
+    binarized_ground_truth = cv2.threshold(ground_truth, 127, 255, cv2.THRESH_BINARY)[1] / 255
+
+    # Initialiser une liste pour stocker les AUC pour différentes qualités JPEG
+    auc_scores = []
+
+    # Nombre de qualités JPEG à évaluer (50 à 100 avec un pas de 5)
+    quality_factors = range(50, 101, 5)
+
+    # Parcourir différentes qualités JPEG
+    for quality in quality_factors:
+        # Sauvegarder et recharger l'image avec compression JPEG
+        _, buffer = cv2.imencode('.jpg', original_image, [int(cv2.IMWRITE_JPEG_QUALITY), quality])
+        recompressed_image = cv2.imdecode(buffer, 1)
+
+        # Convertir l'image recompressée en niveaux de gris
+        gray_recompressed_image = cv2.cvtColor(recompressed_image, cv2.COLOR_BGR2GRAY)
+
+        # Binariser l'image recompressée
+        binarized_recompressed_image = cv2.threshold(gray_recompressed_image, 127, 255, cv2.THRESH_BINARY)[1] / 255
+
+        # Calculer les points de la courbe ROC et l'AUC
+        fpr, tpr, _ = roc_curve(binarized_ground_truth.flatten(), binarized_recompressed_image.flatten())
+        roc_auc = auc(fpr, tpr)
+
+        # Ajouter l'AUC à la liste
+        auc_scores.append(roc_auc)
+
+    # Tracer la courbe AUC en fonction du facteur qualité JPEG
+    plt.figure(figsize=(10, 5))
+    plt.plot(quality_factors, auc_scores, marker='o')
+    plt.xlabel('Facteur Qualité JPEG')
+    plt.ylabel('AUC')
+    plt.title('AUC en fonction du Facteur Qualité JPEG')
+    plt.grid(True)
+    plt.show()
+
+############################################################################################################
 
 # IA resources
 
@@ -111,6 +187,153 @@ def run_detection(script_name, image_path, root):
 
     return info
 
+
+def evaluate_detection(script_name, image_path,root): 
+    # Demander à l'utilisateur de sélectionner l'image de vérité terrain
+    ground_truth_path = filedialog.askopenfilename(title="Sélectionner l'image de vérité terrain", filetypes=(("Fichiers image", "*.png;*.jpg;*.jpeg"), ("Tous les fichiers", "*.*")))
+    if script_name == "extract_noise.py":
+        if ground_truth_path:
+            # Charger l'image de vérité terrain
+            ground_truth = cv2.imread(ground_truth_path, cv2.IMREAD_GRAYSCALE)
+            binarized_ground_truth = cv2.threshold(ground_truth, 127, 255, cv2.THRESH_BINARY)[1] / 255
+
+            # Initialiser les listes pour stocker les valeurs de kernel_size et AUC
+            kernel_sizes = []
+            auc_scores = []
+
+            # Demander à l'utilisateur d'entrer les valeurs minimale et maximale de la taille du noyau
+            min_kernel_size = simpledialog.askinteger("Taille du noyau", "Entrez la taille minimale du noyau (entier impair) :", parent=root)
+            max_kernel_size = simpledialog.askinteger("Taille du noyau", "Entrez la taille maximale du noyau (entier impair) :", parent=root)
+
+            # Vérifier si les valeurs saisies sont valides
+            if min_kernel_size is None or max_kernel_size is None:
+                messagebox.showerror("Erreur", "Vous devez entrer des valeurs valides pour la taille du noyau.")
+            elif min_kernel_size % 2 == 0 or max_kernel_size % 2 == 0:
+                messagebox.showerror("Erreur", "La taille du noyau doit être un entier impair.")
+            else:
+            # Faire varier kernel_size
+                for kernel_size in range(min_kernel_size, max_kernel_size + 1, 2): # kernel_size varie de min_kernel_size à max_kernel_size avec un pas de 2
+                    result = extract_noise_eval(image_path, kernel_size)
+
+                    # Binariser les images pour la comparaison
+                    binarized_result = cv2.threshold(result, 127, 255, cv2.THRESH_BINARY)[1] / 255
+
+                    # Calculer les points de la courbe ROC et l'AUC
+                    fpr, tpr, thresholds = roc_curve(binarized_ground_truth.flatten(), binarized_result.flatten())
+                    roc_auc = auc(fpr, tpr)
+
+                    # Ajouter les valeurs de kernel_size et AUC aux listes
+                    kernel_sizes.append(kernel_size)
+                    auc_scores.append(roc_auc)
+
+            # Afficher l'AUC en fonction de kernel_size
+            plt.figure(figsize=(10, 5))
+            plt.plot(kernel_sizes, auc_scores, marker='o')
+            plt.xlabel('Kernel Size')
+            plt.ylabel('AUC')
+            plt.title('AUC en fonction de Kernel Size')
+            plt.grid(True)
+            plt.show()
+        else:
+            messagebox.showerror("Erreur", "Veuillez sélectionner une image de vérité terrain.")
+
+    elif script_name == "gradient.py":
+        if ground_truth_path:
+            # Charger l'image de vérité terrain
+            ground_truth = cv2.imread(ground_truth_path, cv2.IMREAD_GRAYSCALE)
+            binarized_ground_truth = cv2.threshold(ground_truth, 127, 255, cv2.THRESH_BINARY)[1] / 255
+
+            # Demander à l'utilisateur s'il veut afficher la courbe ROC ou la courbe AUC
+            choice = simpledialog.askstring("Choix", "Voulez-vous afficher la courbe ROC ou la courbe AUC ? (ROC/AUC)")
+
+            if choice == "ROC":
+                # Demander à l'utilisateur d'entrer les valeurs minimale et maximale du seuil
+                min_threshold = simpledialog.askinteger("Seuil", "Entrez la valeur minimale du seuil :", parent=root)
+                max_threshold = simpledialog.askinteger("Seuil", "Entrez la valeur maximale du seuil :", parent=root)
+
+                # Vérifier si les valeurs saisies sont valides
+                if min_threshold is None or max_threshold is None:
+                    messagebox.showerror("Erreur", "Vous devez entrer des valeurs valides pour le seuil.")
+                else:
+                    # Initialiser les listes pour stocker les taux de faux positifs (fpr) et les taux de vrais positifs (tpr)
+                    fpr_list = []
+                    tpr_list = []
+
+                    # Faire varier le seuil
+                    for threshold in range(min_threshold, max_threshold + 1):
+                        result = gradient(image_path, threshold)  # Appel de la fonction gradient avec l'image et le seuil
+
+                        # # Comparer les résultats avec l'image de vérité terrain pour calculer TP, FP, TN et FN
+                        TP = np.sum((result == 1) & (binarized_ground_truth == 1))
+                        FP = np.sum((result == 1) & (binarized_ground_truth == 0))
+                        TN = np.sum((result == 0) & (binarized_ground_truth == 0))
+                        FN = np.sum((result == 0) & (binarized_ground_truth == 1))
+
+                        # Calculer TPR (True Positive Rate) et FPR (False Positive Rate)
+                        TPR = TP / (TP + FN)
+                        FPR = FP / (FP + TN)
+
+                        # Ajouter les valeurs de FPR et TPR aux listes
+                        fpr_list.append(FPR)
+                        tpr_list.append(TPR)
+
+                    # la courbe ROC
+                    plt.figure(figsize=(10, 5))
+                    # for i in range(len(fpr_list)):
+                    #     plt.plot(fpr_list[i], tpr_list[i], color='blue', marker='o')
+                    # la diagonale
+                    plt.plot([0, 1], [0, 1], color='red', linestyle='--', label='Diagonale')
+                    plt.plot(fpr_list, tpr_list, color='blue')
+                    plt.xlabel('Taux de faux positifs (FPR)')
+                    plt.ylabel('Taux de vrais positifs (TPR)')
+                    plt.title('Courbe ROC en fonction du seuil')
+                    plt.legend()
+                    plt.xlim(0, 1)
+                    plt.ylim(0, 1)
+                    plt.grid(True)
+                    plt.show()
+
+            elif choice == "AUC":
+                # Demander à l'utilisateur d'entrer les valeurs minimale et maximale du seuil
+                min_threshold = simpledialog.askinteger("Seuil", "Entrez la valeur minimale du seuil :", parent=root)
+                max_threshold = simpledialog.askinteger("Seuil", "Entrez la valeur maximale du seuil :", parent=root)
+
+                # Vérifier si les valeurs saisies sont valides
+                if min_threshold is None or max_threshold is None:
+                    messagebox.showerror("Erreur", "Vous devez entrer des valeurs valides pour le seuil.")
+                else:
+                    # Initialiser les listes pour stocker les valeurs de seuil et AUC
+                    thresholds = []
+                    auc_scores = []
+
+                    # Faire varier le seuil
+                    for threshold in range(min_threshold, max_threshold + 1):
+                        result = gradient(image_path, threshold)  # Appel de la fonction gradient avec l'image et le seuil
+
+                        # Calculer les points de la courbe ROC et l'AUC
+                        fpr, tpr, _ = roc_curve(binarized_ground_truth.flatten(), result.flatten())
+                        roc_auc = auc(fpr, tpr)
+
+                        # Ajouter les valeurs de seuil et AUC aux listes
+                        thresholds.append(threshold)
+                        auc_scores.append(roc_auc)
+
+                    # Tracer la courbe AUC en fonction du seuil
+                    plt.figure(figsize=(10, 5))
+                    plt.plot(thresholds, auc_scores, marker='o')
+                    plt.xlabel('Seuil')
+                    plt.ylabel('AUC')
+                    plt.title('AUC en fonction du seuil')
+                    plt.grid(True)
+                    plt.show()
+        else:
+            messagebox.showerror("Erreur", "Veuillez sélectionner une image de vérité terrain.")
+
+    elif script_name == "jpeg_ghost.py":
+        if ground_truth_path:
+            jpeg_ghost_detection(image_path,ground_truth_path)
+
+
 def main():
     root = CTk()
     root.title("Détection de Falsification d'Images")
@@ -192,8 +415,14 @@ def main():
     evaluate_btn = CTkButton(frame, text="Run", command=run)
     evaluate_btn.grid(column=0, row=3, columnspan=2, pady=30, sticky="ew")
 
+    def evaluate_wrapper():
+        global script_name
+        global file_path
+        if file_path and script_name:
+            evaluate_detection(script_name, file_path,root)
+
     # Bouton pour évaluer la méthode de détection
-    evaluate_btn = CTkButton(frame, text="Évaluer la méthode de détection", command=evaluate_detection)
+    evaluate_btn = CTkButton(frame, text="Évaluer la méthode de détection", command=evaluate_wrapper)
     evaluate_btn.grid(column=0, row=5, columnspan=2, pady=30, sticky="ew")
 
     # Label pour le CNN
@@ -218,29 +447,6 @@ def main():
     cnn_btn.grid(column=0, row=6, columnspan=2, pady=30, sticky="ew")
 
     root.mainloop()
-
-
-def evaluate_detection(): 
-    y_true = [0, 0, 1, 1]
-    y_scores = [0.1, 0.4, 0.35, 0.8]
-    
-    fpr, tpr, thresholds = roc_curve(y_true, y_scores)
-    roc_auc = auc(fpr, tpr)
-
-    plt.figure()
-    plt.plot(fpr, tpr, color='darkorange', lw=2, label='ROC curve (area = %0.2f)' % roc_auc)
-    plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
-    plt.xlim([0.0, 1.0])
-    plt.ylim([0.0, 1.05])
-    plt.xlabel('False Positive Rate')
-    plt.ylabel('True Positive Rate')
-    plt.title('Receiver Operating Characteristic')
-    plt.legend(loc="lower right")
-    plt.show()
-
-
-
-
 
 if __name__ == "__main__":
     main()
