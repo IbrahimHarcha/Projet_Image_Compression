@@ -114,6 +114,8 @@ def ELA_extraction(path):
 def prepare_image(image_path):
     return np.array(ELA_extraction(image_path).resize((IMG_WIDTH, IMG_HEIGHT))).flatten() / 255.0 # Normalisation
 
+model = load_model('../cnn/fake_image_detector_model4.h5')
+
 
 # Méthodes de detection
 
@@ -157,11 +159,11 @@ def run_detection(script_name, image_path, root):
                 command.append("20")
         elif script_name == "ela_detection.py":
             # Demander le facteur qualité pour le script ela_detection.py
-            quality_factor = simpledialog.askstring("Input", "Entrez le facteur qualité (ou appuyez sur \"OK\" pour utiliser la valeur par défaut) :", parent=root)
+            quality_factor = simpledialog.askstring("Input", "Entrez le facteur qualité (ou appuyez sur \"OK\" pour utiliser la valeur par défaut (90)) :", parent=root)
             if quality_factor is not None and quality_factor != "":
                 command.append(quality_factor)
             else:
-                command.append("75")
+                command.append("90")
         elif script_name == "gradient.py":
             # Demander le seuil pour le script gradient.py
             seuil = simpledialog.askstring("Input", "Entrez le seuil de détection (ou appuyez sur \"OK\" pour utiliser le seuil par défaut de 150) :", parent=root)
@@ -432,7 +434,6 @@ def main():
     def evaluate_cnn():
         global file_path
         if file_path:
-            model = load_model('../cnn/fake_image_detector_model4.h5')
             preprocessed_image = prepare_image(file_path)
             preprocessed_image = preprocessed_image.reshape(-1, IMG_WIDTH, IMG_HEIGHT, IMG_CANAL)
             prediction = model.predict(preprocessed_image)

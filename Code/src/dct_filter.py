@@ -51,6 +51,8 @@ assert not (len(sys.argv) != 2), 'Erreur, Usage : dct_filter.py imageIn'
 image_path = sys.argv[1]
 result = DTC_filter(image_path)
 
+# cv2.imwrite("DCT_out.jpg", result)
+
 # Afficher l'image originale et l'image avec les anomalies mises en évidence
 plt.subplot(121), plt.imshow(cv2.cvtColor(cv2.imread(image_path), cv2.COLOR_BGR2RGB))
 plt.title('Image Originale'), plt.xticks([]), plt.yticks([])

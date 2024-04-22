@@ -51,7 +51,3 @@ if __name__ == "__main__":
     axes[1].axis('off')
 
     plt.show()
-
-    # J'aimerai sauvegarder l'image des régions falsifiées et l'image en entré
-    cv2.imwrite("imageIn.jpg", cv2.imread(sys.argv[1]))
-    cv2.imwrite("imageOut.jpg", image)
